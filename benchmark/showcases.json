@@ -1,0 +1,38 @@
+[
+  {
+    "uid": "ec730e3a13c846c8a92ba85b49c8f179",
+    "omnidirectional_self_occlusion_attribute": 0.78616257,
+    "observation_saturation_difficulty": 10,
+    "planning_difficulty": 8
+  },
+  {
+    "uid": "ba80b4e726384dd09b29444311ac21d5",
+    "omnidirectional_self_occlusion_attribute": 0.73241937,
+    "observation_saturation_difficulty": 25,
+    "planning_difficulty": 17
+  },
+  {
+    "uid": "a35395c93b1844e895d3cf181738f82c",
+    "omnidirectional_self_occlusion_attribute": 0.77413453,
+    "observation_saturation_difficulty": 50,
+    "planning_difficulty": 20
+  },
+  {
+    "uid": "27abe84ed89345f39b529f09757c4de8",
+    "omnidirectional_self_occlusion_attribute": 0.66013852,
+    "observation_saturation_difficulty": 117,
+    "planning_difficulty": 53
+  },
+  {
+    "uid": "ff825afe79e8447cbe12d9ea36998d90",
+    "omnidirectional_self_occlusion_attribute": 0.68626668,
+    "observation_saturation_difficulty": 162,
+    "planning_difficulty": 128
+  },
+  {
+    "uid": "714b04236caa4cdca3405436db42ff1a",
+    "omnidirectional_self_occlusion_attribute": 0.60500738,
+    "observation_saturation_difficulty": 225,
+    "planning_difficulty": 41
+  }
+]

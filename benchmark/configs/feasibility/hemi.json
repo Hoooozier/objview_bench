@@ -1,0 +1,21 @@
+{
+  "name": "hemi",
+  "description": "Camera center restricted to z >= 0.",
+  "pose_format": "camera_lookat_roll",
+  "atol": 0.0001,
+  "structured_rule": {
+    "logic": "and",
+    "rules": [
+      {
+        "field": "camera_radius",
+        "op": ">=",
+        "value": 1.0
+      },
+      {
+        "field": "camera_z",
+        "op": ">=",
+        "value": 0.0
+      }
+    ]
+  }
+}

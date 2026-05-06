@@ -1,0 +1,16 @@
+{
+  "name": "whole",
+  "description": "No additional directional feasibility constraint; camera center must stay outside the normalized unit object sphere.",
+  "pose_format": "camera_lookat_roll",
+  "atol": 0.0001,
+  "structured_rule": {
+    "logic": "and",
+    "rules": [
+      {
+        "field": "camera_radius",
+        "op": ">=",
+        "value": 1.0
+      }
+    ]
+  }
+}

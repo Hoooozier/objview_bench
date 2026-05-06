@@ -1,0 +1,31 @@
+{
+  "name": "eighth",
+  "description": "Camera center restricted to x >= 0, y >= 0, and z >= 0.",
+  "pose_format": "camera_lookat_roll",
+  "atol": 0.0001,
+  "structured_rule": {
+    "logic": "and",
+    "rules": [
+      {
+        "field": "camera_radius",
+        "op": ">=",
+        "value": 1.0
+      },
+      {
+        "field": "camera_z",
+        "op": ">=",
+        "value": 0.0
+      },
+      {
+        "field": "camera_y",
+        "op": ">=",
+        "value": 0.0
+      },
+      {
+        "field": "camera_x",
+        "op": ">=",
+        "value": 0.0
+      }
+    ]
+  }
+}

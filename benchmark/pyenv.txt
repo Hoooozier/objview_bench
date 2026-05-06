@@ -1,0 +1,13 @@
+conda create -n pytorch3d python=3.9
+conda activate pytorch3d
+# Install PyTorch + CUDA 11.8
+conda install pytorch==2.0.0 torchvision==0.15.0 torchaudio==2.0.0 pytorch-cuda=11.8 -c pytorch -c nvidia
+# Install PyTorch3D
+conda install -c iopath iopath
+pip install pytorch3d -f https://dl.fbaipublicfiles.com/pytorch3d/packaging/wheels/py39_cu118_pyt200/download.html
+# Make sure the numpy version is <2
+pip install numpy==1.24.4
+# Install tools
+pip install scikit-image==0.24.0 matplotlib==3.9.4 imageio==2.37.0 plotly==6.0.1 opencv-python==4.11.0.86 open3d==0.19.0
+# Install PoinTr tools
+pip install easydict==1.13 transforms3d==0.4.2 h5py==3.14.0 timm==1.0.26
