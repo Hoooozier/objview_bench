@@ -578,6 +578,10 @@ Preflight 允许向用户返回详细日志，因为使用的是公开数据。
 - PostgreSQL、Redis、MinIO/S3、Registry；
 - submission/build/preflight/admin 工作流。
 
+2026-10-22 C1 开发增量：先落地独立 `objview_submit` API 包，使用本机 SQLite 完成邀请身份、会话撤销、源码元数据登记、幂等、持久化入口额度和管理员审核。用户已要求暂缓 Docker 安装；这一增量不依赖 Docker，也不运行用户代码。开发凭证由管理员私下交付，**不冒充 GitHub OAuth**；只有显式 `--development-only` 才可启动 CLI，固定绑定 localhost。它是开发适配器，不替代生产 PostgreSQL/OAuth/对象存储/隔离构建器。
+
+C1 状态为 `SUBMITTED -> ADMIN_REVIEW -> APPROVED_FOR_PREFLIGHT | REJECTED`；`APPROVED_FOR_PREFLIGHT` 是尚无 worker 消费的等待状态，不能报告 BUILDING/RUNNING 或生成成绩。仅接收 `objview-interaction/v1`、不可变 SHA、GitHub HTTPS 仓库和相对 Dockerfile 路径等元数据；无下载、上传、构建、hidden、分数或用户时间接口。额度为每账户滚动 24 小时 5 次新提交、3 个未拒绝提交、10 个方法；它们只限制开发入口，不替代 §9 的团队/image/method-lineage 正式配额。具体契约和未实现能力见 `objview_submit/README.md`，实施计划见 `docs/superpowers/plans/2026-10-22-phase-c-intake.md`。
+
 ### 阶段 D：Hidden Leaderboard
 
 - 数据分层与版本化；

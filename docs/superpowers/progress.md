@@ -40,7 +40,7 @@ git diff --check
 
 - 本机没有 Docker 命令；2026-10-22 用户明确选择暂缓安装。示例镜像未构建，双容器网络、只读挂载、GPU 隔离、资源限制和逃逸防护未实测；这不阻止本地控制器契约与双进程验收。
 - 未启动真实数据集/GPU 渲染评测；根据新的本机验收要求，这不再阻塞开发交付，不要求在本机验证算法效果或科学指标数值。实际部署安全仍需专用 worker 验收。
-- 没有上传网站、GitHub 邀请登录、数据库/持久化提交配额、构建器、调度队列、全局反复提取防护或榜单发布。
+- 尚没有源码上传网站、GitHub OAuth、构建器、调度队列、全局反复提取防护或榜单发布。C1 已增加本地邀请凭证、SQLite 持久化提交/入口额度和审核 API（见文末）；不是正式隐藏评测配额。
 - 单 episode 匿名与查询限额只减少直接泄漏，不保证阻止反复提取测试数据或基于公开对象识别刷分。
 - 当前 ready 计时包含部分 benchmark 准备时间；容器启动/模型就绪耗时应由下一阶段控制器独立测量。
 - HTTP server 的 watchdog 是协作式退出，不是 native/GPU 调用的硬资源边界。
@@ -48,7 +48,7 @@ git diff --check
 ## 下一阶段实施顺序
 
 1. **Phase B：可信执行控制器**。本地 trusted-smoke 控制器已实现（见下）；待 Docker 可用后验收镜像构建与双容器真实链路，补全隔离 canary、磁盘限额、独立 readiness 计时和崩溃恢复清理。当前不运行研究者代码。
-2. **Phase C：受邀用户提交站后端**。GitHub 登录与邀请名单、团队级额度、上传对象存储、源码/权重哈希、人工审核、任务状态；Web 不挂载 Docker socket。正式配额必须持久化并覆盖失败尝试。
+2. **Phase C：受邀用户提交站后端**。本地 C1 邀请/元数据/审核 API 已实现（见文末）；接下来做页面和持久化队列，再接 GitHub 登录、团队级额度、上传对象存储、源码/权重哈希。Web 不挂载 Docker socket。正式配额必须持久化并覆盖失败尝试。
 3. **Phase D：前端与发布**。提交/状态页面、只显示安全错误与聚合结果、管理员审核；确定真实域名后在 github.io 增加链接，不迁移静态站。
 4. **Phase E：公开注册前安全验收**。强化 VM/microVM 边界、网络白名单/旁路测试、跨作业访问与数据导出测试、审计、依赖和镜像扫描、限流与恢复演练。
 
@@ -90,3 +90,32 @@ PYTHONDONTWRITEBYTECODE=1 timeout 90s python3 benchmark/smoke_submission.py
 安装情况：宿主 Ubuntu 22.04、无 Docker，sudo 需要交互密码；告知后用户选择“先继续开发，稍后再安装 Docker”。未修改系统包、sudo 配置、用户组或服务。实际 Docker 构建/执行保持**未验收**；不是整个 Phase B 或生产安全已完成。rootless 前置包与后续自动安装步骤已写入 worker README。
 
 后续可以先做 Phase C 的邀请用户、提交元数据与持久化任务状态；Web/API 不挂 Docker socket。真实 Docker 验收与更强隔离措施在安装/专用 worker 就绪后补做，正式上传执行仍不开启。
+
+## 2026-10-22 Phase C1：本地受邀提交与人工审核 API
+
+代码与启动说明：[objview_submit/README.md](../../objview_submit/README.md)。实施计划：[phase-c-intake](plans/2026-10-22-phase-c-intake.md)。
+
+已实现：
+
+- 独立 `objview_submit` Python 包，不导入 benchmark/worker；CLI 要求 `--development-only`、固定 localhost、管理员凭证从环境读取，不挂 Docker socket，不拉仓库/构建/执行源码。
+- 一次性、限时邀请，管理员预先指定身份标签；兑换 24 小时会话。SQLite 仅存 token 摘要，支持邀请撤销、退出和禁用账户。相同标签续邀保留账户与配额。这是开发凭证流程，不是 GitHub OAuth。
+- 用户方法与源码元数据、完整 SHA/协议版本/路径白名单、用户所有权校验；拒绝用户指定 owner、状态、指标和耗时。
+- 每账户持久化入口额度、原子并发检查、请求幂等；管理员基于 version 的状态转换和同事务审计。`SUBMITTED -> ADMIN_REVIEW -> APPROVED_FOR_PREFLIGHT | REJECTED`，批准仅是等待状态，无实际执行和榜单资格。
+- JSON 大小/读取时限、兑换临时限流、禁用文档/访问日志、无 CORS、no-store 与错误脱敏。私有状态目录 0700、DB 0600、未知 schema 拒绝启动。
+
+本次最终验收：
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 timeout 90s python3 -m unittest discover -s benchmark/tests -v
+PYTHONDONTWRITEBYTECODE=1 timeout 90s python3 benchmark/smoke_submission.py
+PYTHONDONTWRITEBYTECODE=1 python3 -m objview_submit --help
+git diff --check
+```
+
+- 全套 **84 项测试通过**（7.495 秒）：原有 60 项 + 24 项 intake 测试。
+- intake 含实际 TCP HTTP 服务进程、真实 SQLite、停止并重启服务后凭证与提交继续有效、管理员继续审核；不是只检查 health 200。覆盖并发邀请兑换、提交额度与审核竞争、跨用户/跨角色拒绝、重复 key、凭证过期/撤销、数据库错误脱敏等。
+- 原有 benchmark/worker smoke 独立复跑 **54 项通过**（3.578 秒），报告 `/tmp/objview-smoke-report-2n5sfcui/report.json`；报告仍不包含 intake，不声称网站→构建→评测已全线贯通。
+- 独立只读审查未发现当前本地开发范围内的 Critical/Important 问题；审查者独立复跑 14 项真实 SQLite 测试通过，HTTP/进程测试由主执行者实跑。非阻断项：提交/审计列表只有最近 100 条，无分页，旧待审核项可能被新历史挤出；正式试用前补齐分页。
+- 复核协议字段时修正为设计与 gateway 一致的 `objview-interaction/v1`，先复现旧短名称校验不兼容，再通过回归。CLI help、语法和 diff 检查通过；`.state` 已在包级 `.gitignore` 排除。
+
+未做/下一步：前端提交与审核页面、分页、持久化工作队列与可信 smoke 对接；真实 OAuth、源码文件接收/对象存储、独立构建器、团队与 image/method-lineage 配额仍未实现。没有安装 Docker，没有启动长期服务，没有改 github.io 或数据集，不验证科学指标正确性。不允许把本地模式暴露公网或接收不可信算法执行。
