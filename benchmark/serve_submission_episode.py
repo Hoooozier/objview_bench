@@ -52,6 +52,11 @@ def positive_seconds(value):
     return value
 
 
+def persist_episode_result(result, summary_path):
+    """Persist trusted output; callers must keep this path outside released observations."""
+    Path(summary_path).write_text(json.dumps(result, indent=2, allow_nan=False) + '\n', encoding='utf-8')
+
+
 def build_parser():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('uid',):
@@ -142,7 +147,7 @@ def main():
                     return
             result = execute_episode(runner, protocol, startup_timeout_sec=args.startup_timeout_sec,
                                      cancelled=cancelled)
-            summary_path.write_text(json.dumps(result, indent=2, allow_nan=False) + '\n', encoding='utf-8')
+            persist_episode_result(result, summary_path)
             outcome.update(result)
         finally:
             completed.set()

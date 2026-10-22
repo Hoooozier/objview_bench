@@ -2,6 +2,28 @@
 
 这是评测侧的单 episode 协议，不是已上线的提交网站。它不会构建或执行上传代码，也不提供用户注册、任务队列、排行榜或容器沙箱。暂时只在本地/隔离开发环境使用。
 
+## 一键 CPU/dummy 链路验收（本机开发标准）
+
+按 2026-10-22 确认的要求：本机只验收已实现业务链路是否跑通，不检查算法质量、科学指标数值或论文成绩。无需真实算法环境、数据集、权重和 GPU。接口、鉴权、匿名边界、服务端计时、超时、幂等、结果落盘与清理仍须正确。
+
+```bash
+# 在独立 Python 3.10+ 环境中安装轻量依赖；仓库根目录执行
+pip install -r benchmark/requirements-smoke.txt
+PYTHONDONTWRITEBYTECODE=1 timeout 90s python3 benchmark/smoke_submission.py
+```
+
+入口运行协议/HTTP/runner/service 验收用例，其中一项会真实启动仓库的 `examples/submission/algorithm.py` 子进程，执行：
+
+`dummy → SDK/HTTP → ready → 读取观察 → feasibility → move → 新观察 → stop → evaluator 汇总 → 私有 JSON 落盘 → 退出与清理`。
+
+保留真实 runner、evaluator 与接口，仅使用合成 RGBD 和 NumPy 距离核替身。专用测试进程屏蔽 `api_render` 导入，避免本机部分安装的 Torch/GPU 依赖影响验收；正式服务没有任何自动降级到模拟评测的分支。子进程只执行仓库可信示例，**不能据此在宿主机运行上传代码**。
+
+默认输出独立临时目录的 `report.json`，也可用 `--report /existing-directory/new-report.json` 指定新文件；拒绝覆盖已有报告。返回 0 且报告 `status=passed` 才算通过；失败、跳过用例、未执行任何用例均返回非 0。被外部 timeout/中断终止时报告可能为 `running` 或不完整，不能算通过。外层 `timeout 90s` 是开发测试的总时限，不是生产控制器。
+
+报告固定标记 `mode=smoke_test`、`official_result=false`、`leaderboard_eligible=false`、`algorithm_correctness_checked=false`，只保存验收元数据而非分数。合成评分结果同样带这些标签，仅写入测试私有目录并在结束后清理；HTTP 服务、临时观察和 dummy 进程也会退出/清理，保留独立验收报告。未来正式发布端仍需校验可信来源并拒绝 smoke 结果；当前尚未实现排行榜，标签不是已上线的发布拦截器。
+
+报告的 `not_verified` 列出未覆盖范围：真实算法质量、科学数值、GPU、Docker 构建/隔离、网站上传/OAuth、控制器队列和排行榜发布。缺少算法/GPU 环境不再阻塞开发；缺少 Docker 时本地进程测试不代表容器安全已验收。后续功能完成后逐步扩展业务链路用例。
+
 ## 文件与信任边界
 
 | 文件 | 职责 |

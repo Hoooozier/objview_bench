@@ -1,7 +1,10 @@
 """Real runner/evaluator, tiny synthetic images, NumPy substitutes for GPU kernels."""
 import concurrent.futures
 import json
+import os
+import secrets
 import socket
+import subprocess
 import sys
 import tempfile
 import threading
@@ -188,6 +191,82 @@ class RunnerTests(unittest.TestCase):
             server.should_exit = True
             thread.join(timeout=3)
         self.assertFalse(thread.is_alive())
+
+    def test_dummy_process_http_move_stop_scoring_persistence_and_cleanup(self):
+        """Smoke acceptance: assert pipeline behavior, never scientific metric values."""
+        import uvicorn
+        from serve_submission_episode import execute_episode, persist_episode_result
+        from submission_gateway import create_app
+
+        # Use the actual monotonic clock and require readiness from the child.
+        protocol = SubmissionSession(self.feasibility.is_feasible, action_timeout_sec=5, max_steps=3)
+        protocol.configure(self.runner._episode_config_dict())
+        self.adapter.protocol = protocol
+        token = secrets.token_hex(32)
+        listener = socket.socket()
+        listener.bind(('127.0.0.1', 0))
+        listener.listen(16)
+        port = listener.getsockname()[1]
+        server = uvicorn.Server(uvicorn.Config(create_app(protocol, token), ws='none',
+                                               access_log=False, log_level='error',
+                                               timeout_graceful_shutdown=1, proxy_headers=False))
+        server_thread = threading.Thread(target=server.run, kwargs={'sockets': [listener]}, daemon=True)
+        server_thread.start()
+        outcome = {}
+        cancelled = threading.Event()
+
+        def run_episode():
+            outcome.update(execute_episode(self.runner, protocol, startup_timeout_sec=5, cancelled=cancelled))
+
+        worker = threading.Thread(target=run_episode, daemon=True)
+        worker.start()
+        benchmark_root = Path(__file__).resolve().parents[1]
+        env = dict(os.environ, PYTHONPATH=str(benchmark_root), PYTHONDONTWRITEBYTECODE='1',
+                   BENCHMARK_URL=f'http://127.0.0.1:{port}', OBJVIEW_EPISODE_TOKEN=token,
+                   OBSERVATION_ROOT=str(self.root / 'released'))
+        try:
+            deadline = time.monotonic() + 3
+            while not server.started and time.monotonic() < deadline:
+                time.sleep(.005)
+            self.assertTrue(server.started, 'Gateway failed to start')
+            # Only our repository's trusted example is executed; no uploaded code.
+            child = subprocess.run([sys.executable, '-B', str(benchmark_root / 'examples/submission/algorithm.py')],
+                                   env=env, cwd=self.root, stdout=subprocess.DEVNULL,
+                                   stderr=subprocess.DEVNULL, timeout=10, check=False)
+            self.assertEqual(child.returncode, 0, 'Dummy process failed')
+            worker.join(timeout=3)
+            self.assertFalse(worker.is_alive(), 'Runner did not terminate')
+            self.assertEqual(outcome['status'], 'completed')
+            self.assertEqual(outcome['visited_view_num'], 2)
+            self.assertEqual([x['action'] for x in outcome['algorithm_action_history']], ['move', 'stop'])
+            self.assertIn('terminal_checkpoint', outcome)
+            self.assertIn('evaluator_summary', outcome)
+            timing = outcome['official_timing']
+            self.assertEqual(timing['timing_source'], 'benchmark_monotonic_clock')
+            self.assertEqual(len(timing['steps']), 2)
+            self.assertGreater(timing['total_decision_wall_time_ns'], 0)
+            # Keep synthetic summaries unmistakably separate from official scores.
+            outcome.update(mode='smoke_test', official_result=False, leaderboard_eligible=False,
+                           algorithm_correctness_checked=False)
+            summary_path = self.root / 'private' / 'smoke-summary.json'
+            persist_episode_result(outcome, summary_path)
+            persisted = json.loads(summary_path.read_text())
+            self.assertEqual(persisted['status'], 'completed')
+            self.assertIs(persisted['leaderboard_eligible'], False)
+            for index in (0, 1):
+                for name in ('rgb.png', 'depth.npz', 'mask.png', 'frame_meta.json'):
+                    self.assertTrue((self.root / 'released' / f'step_{index:03d}' / name).is_file())
+        finally:
+            cancelled.set()
+            protocol.finish('EPISODE_FAILED')
+            server.should_exit = True
+            worker.join(timeout=3)
+            server_thread.join(timeout=3)
+            listener.close()
+        self.assertFalse(worker.is_alive())
+        self.assertFalse(server_thread.is_alive())
+        self.tmp.cleanup()
+        self.assertFalse(self.root.exists(), 'Episode files not cleaned')
 
     def test_infeasible_action_finalizes_with_measured_time(self):
         self.runner._publish_initial_step()

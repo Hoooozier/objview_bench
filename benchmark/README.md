@@ -9,6 +9,16 @@ The new single-episode HTTP boundary, SDK and submission example are documented 
 not yet an isolated public evaluation service. Legacy file/oracle launchers below
 are trusted research tooling and must not run uploaded algorithms.
 
+CPU-only development acceptance (no real algorithms, GPU or dataset):
+
+```bash
+# From the repository root
+PYTHONDONTWRITEBYTECODE=1 timeout 90s python3 benchmark/smoke_submission.py
+```
+
+See `requirements-smoke.txt` for lightweight dependencies. This checks the implemented
+pipeline, not algorithm quality; its report is explicitly ineligible for the leaderboard.
+
 ## Environment Setup
 
 Use `requirements.txt` as the main pip dependency list, and `pyenv.txt` as the full environment recipe (including conda/PyTorch/PyTorch3D steps):
