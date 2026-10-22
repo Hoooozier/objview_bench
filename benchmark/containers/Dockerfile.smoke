@@ -1,0 +1,14 @@
+# Trusted development image only; never use synthetic metrics for official results.
+# Build context: repository root. Controller resolves the built image to its SHA256 ID.
+FROM python:3.10-slim
+LABEL org.objview.smoke.role="benchmark"
+WORKDIR /app
+COPY benchmark/requirements-submission.txt benchmark/requirements-smoke.txt /app/
+RUN pip install --no-cache-dir -r requirements-smoke.txt
+COPY benchmark/api_evaluation.py benchmark/api_feasibility.py benchmark/api_interaction.py /app/
+COPY benchmark/runner_episode.py benchmark/serve_submission_episode.py /app/
+COPY benchmark/submission_protocol.py benchmark/submission_gateway.py benchmark/submission_interaction.py /app/
+COPY benchmark/smoke_fixtures.py benchmark/smoke_container_service.py /app/
+COPY benchmark/configs/feasibility/whole.json /app/configs/feasibility/whole.json
+USER 65532:65532
+ENTRYPOINT ["python", "-B", "/app/smoke_container_service.py"]

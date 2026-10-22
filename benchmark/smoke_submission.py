@@ -29,7 +29,8 @@ def run_checks(suite, report_path, *, stream=None):
         'algorithm_correctness_checked': False, 'status': 'running',
         'started_at': datetime.now(timezone.utc).isoformat(),
         'scope': 'implemented_benchmark_chain',
-        'test_doubles': ['synthetic_rgbd', 'numpy_distance_kernels', 'fallback_camera_pose'],
+        'test_doubles': ['synthetic_rgbd', 'numpy_distance_kernels', 'fallback_camera_pose',
+                         'docker_command_boundary'],
         'not_verified': ['algorithm_quality', 'scientific_metric_correctness', 'gpu_execution',
                          'docker_build_and_isolation', 'website_upload_and_oauth',
                          'controller_queue', 'leaderboard_publication'],
@@ -70,6 +71,7 @@ def main():
     tests = Path(__file__).resolve().parent / 'tests'
     sys.path.insert(0, str(tests))
     suite = unittest.defaultTestLoader.discover(str(tests), pattern='test_submission_*.py')
+    suite.addTests(unittest.defaultTestLoader.discover(str(tests), pattern='test_worker_*.py'))
     return run_checks(suite, report_path)
 
 

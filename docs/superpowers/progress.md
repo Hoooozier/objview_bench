@@ -38,7 +38,7 @@ git diff --check
 
 ## 当前没有完成/不能声称的能力
 
-- 本机没有 Docker 命令；示例镜像未构建，双容器网络、只读挂载、GPU 隔离、资源限制和逃逸防护未实测。
+- 本机没有 Docker 命令；2026-10-22 用户明确选择暂缓安装。示例镜像未构建，双容器网络、只读挂载、GPU 隔离、资源限制和逃逸防护未实测；这不阻止本地控制器契约与双进程验收。
 - 未启动真实数据集/GPU 渲染评测；根据新的本机验收要求，这不再阻塞开发交付，不要求在本机验证算法效果或科学指标数值。实际部署安全仍需专用 worker 验收。
 - 没有上传网站、GitHub 邀请登录、数据库/持久化提交配额、构建器、调度队列、全局反复提取防护或榜单发布。
 - 单 episode 匿名与查询限额只减少直接泄漏，不保证阻止反复提取测试数据或基于公开对象识别刷分。
@@ -47,7 +47,7 @@ git diff --check
 
 ## 下一阶段实施顺序
 
-1. **Phase B：可信执行控制器**。先实现可测试的 job 状态机、不可变镜像摘要/数据版本输入契约、独立 build/run 路径、命令白名单与失败清理；在有 Docker 的专用 worker 验收双容器真实链路。容器执行默认关闭，未完成隔离前不运行研究者代码。
+1. **Phase B：可信执行控制器**。本地 trusted-smoke 控制器已实现（见下）；待 Docker 可用后验收镜像构建与双容器真实链路，补全隔离 canary、磁盘限额、独立 readiness 计时和崩溃恢复清理。当前不运行研究者代码。
 2. **Phase C：受邀用户提交站后端**。GitHub 登录与邀请名单、团队级额度、上传对象存储、源码/权重哈希、人工审核、任务状态；Web 不挂载 Docker socket。正式配额必须持久化并覆盖失败尝试。
 3. **Phase D：前端与发布**。提交/状态页面、只显示安全错误与聚合结果、管理员审核；确定真实域名后在 github.io 增加链接，不迁移静态站。
 4. **Phase E：公开注册前安全验收**。强化 VM/microVM 边界、网络白名单/旁路测试、跨作业访问与数据导出测试、审计、依赖和镜像扫描、限流与恢复演练。
@@ -67,3 +67,26 @@ PYTHONDONTWRITEBYTECODE=1 timeout 90s python3 benchmark/smoke_submission.py
 本次最终验证：全套 **42 项通过**（36 项协议/链路 + 6 项报告器回归）；一键入口单独复跑 **36 项通过**，并检查 `sys.modules` 确认未加载 Torch、PyTorch3D、Open3D。CLI help、修改的 Python 文件编译及 `git diff --check` 通过。
 
 审查后将汇总保存提取为服务端与链路用例共用的 `persist_episode_result`，避免仅测试测试代码自己的写文件逻辑；报告加入实际执行的测试 ID。最新本机报告位于 `/tmp/objview-smoke-report-qacckto5/report.json`（临时文件，系统清理后可用一键命令重建）。
+
+## 2026-10-22 Phase B：开发版 worker 与镜像入口
+
+代码：[submission_worker](../../submission_worker/README.md)。计划：[phase-b](plans/2026-10-22-phase-b.md)。
+
+已实现：
+
+- 独立 CLI 控制器，明确要求 `--trusted-smoke`；已有本地镜像解析为 SHA256 ID，不自动拉镜像，不构建或运行上传的源码。
+- 创建任务专属内部 network / volume、固定可信 init 容器，以及独立非 root benchmark/algorithm 容器；算法只读挂载 released 子目录，private staging 保持私有。
+- CPU/内存/PID/tmpfs/日志等固定 Docker 参数、只读根目录、cap-drop、no-new-privileges、命令与总时限、任务标签核对及定向清理。不允许任意 Docker flags 或远程 daemon。
+- PREPARING/STARTING/RUNNING/成功失败状态、算法崩溃/OOM/benchmark 失败/总超时分类、私有报告、清理失败不报成功。没有自动重试。
+- 合成 benchmark 容器入口、两份可信 Dockerfile 和源码白名单 `.dockerignore`。使用真实进程验证与镜像相同的 benchmark 入口 + dummy 算法完成完整 episode；仍不验证算法效果。
+
+验证：
+
+- 全套 **60 项测试通过**：原有用例、容器入口双进程链路、17 项 worker 命令/状态测试。
+- 一键 smoke 验收扩展为 **54 项通过**，报告包含 `docker_command_boundary` 替身标记；报告 `/tmp/objview-smoke-report-8518ac5i/report.json`。
+- 实际调用 worker CLI 验证缺少 Docker 时退出 1，状态 `FAILED/INFRASTRUCTURE_FAILED`、`runtime_code=DOCKER_UNAVAILABLE`、未创建容器资源；失败报告 `/tmp/objview-worker-check.I68ujh/job/report.json`。
+- 独立只读审查发现准备阶段 Docker 调用未遵守总期限，已用失败回归修复并复核；同时补齐 benchmark 提前崩溃检测和报告嵌套计时白名单。修改的 Python 文件编译、CLI help 和 diff 检查通过。
+
+安装情况：宿主 Ubuntu 22.04、无 Docker，sudo 需要交互密码；告知后用户选择“先继续开发，稍后再安装 Docker”。未修改系统包、sudo 配置、用户组或服务。实际 Docker 构建/执行保持**未验收**；不是整个 Phase B 或生产安全已完成。rootless 前置包与后续自动安装步骤已写入 worker README。
+
+后续可以先做 Phase C 的邀请用户、提交元数据与持久化任务状态；Web/API 不挂 Docker socket。真实 Docker 验收与更强隔离措施在安装/专用 worker 就绪后补做，正式上传执行仍不开启。

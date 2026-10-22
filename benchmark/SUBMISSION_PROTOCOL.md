@@ -24,6 +24,8 @@ PYTHONDONTWRITEBYTECODE=1 timeout 90s python3 benchmark/smoke_submission.py
 
 报告的 `not_verified` 列出未覆盖范围：真实算法质量、科学数值、GPU、Docker 构建/隔离、网站上传/OAuth、控制器队列和排行榜发布。缺少算法/GPU 环境不再阻塞开发；缺少 Docker 时本地进程测试不代表容器安全已验收。后续功能完成后逐步扩展业务链路用例。
 
+Phase B 已加入 `submission_worker/` 的 Docker 命令契约测试和与容器相同入口的双进程测试；一键报告把 `docker_command_boundary` 标为测试替身，仍不声称真实 Docker 验收。双容器构建/运行命令与限制见 [worker 说明](../submission_worker/README.md)。Docker 安装已按用户选择暂缓。
+
 ## 文件与信任边界
 
 | 文件 | 职责 |
