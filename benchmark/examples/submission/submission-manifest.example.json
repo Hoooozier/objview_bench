@@ -1,0 +1,11 @@
+{
+  "schema_version": "objview-submission/v1-draft",
+  "method_name": "example-move-stop",
+  "source_revision": "REPLACE_WITH_FULL_COMMIT_SHA",
+  "context_sha256": "COMPUTED_BY_TRUSTED_BUILDER",
+  "dockerfile": "benchmark/examples/submission/Dockerfile",
+  "entrypoint": ["sh", "/app/run.sh"],
+  "weights": [],
+  "built_image_digest": "COMPUTED_BY_TRUSTED_BUILDER",
+  "note": "Documentation template only; no upload API or manifest validator exists yet. User-supplied hashes are not trusted."
+}

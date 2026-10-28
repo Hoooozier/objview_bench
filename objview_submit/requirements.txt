@@ -1,0 +1,7 @@
+# Local development compatibility snapshot, not an audited deployment lockfile.
+fastapi==0.115.12
+starlette==0.46.2
+pydantic==2.11.4
+uvicorn==0.34.2
+anyio==4.9.0
+httpx==0.28.1

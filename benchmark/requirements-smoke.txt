@@ -1,0 +1,4 @@
+# CPU-only acceptance: no Torch, PyTorch3D, Open3D, dataset or algorithm weights.
+-r requirements-submission.txt
+numpy>=1.24,<3
+Pillow>=9,<13

@@ -96,6 +96,8 @@ class EpisodeRunner:
     def run(self) -> dict[str, Any]:
         try:
             self._publish_initial_step()
+            if self.terminal_reason is not None:
+                return self._finalize()
             while True:
                 action = self._wait_for_action()
                 self.last_action = action
@@ -168,11 +170,14 @@ class EpisodeRunner:
                 "observation_manifest_path": manifest_path,
             },
         )
-        self.interaction.publish_benchmark_ready(
-            episode_id=self.config.episode_id,
-            step_index=0,
-            visited_view_num=self.visited_view_num,
-        )
+        if self.visited_view_num >= self.config.max_visited_view_num:
+            self._set_benchmark_terminal("max_cap_reached")
+        else:
+            self.interaction.publish_benchmark_ready(
+                episode_id=self.config.episode_id,
+                step_index=0,
+                visited_view_num=self.visited_view_num,
+            )
         self.interaction.append_history(
             {
                 "event": "observation_published",
@@ -442,6 +447,9 @@ class EpisodeRunner:
         return str(published["manifest_path"])
 
     def _resolve_frame_file_refs(self, *, step_index: int, pose: Any, frame: Any) -> dict[str, Any]:
+        materialize = getattr(self.interaction, "materialize_frame", None)
+        if materialize is not None:
+            return materialize(step_index=step_index, pose=pose, frame=frame)
         if frame.source == "cache":
             cache_refs = self._cache_entry_file_refs(pose)
             if cache_refs is not None:
@@ -559,6 +567,8 @@ class EpisodeRunner:
             "checkpoints": dict(self.evaluator.checkpoints),
             "terminal_checkpoint": terminal_checkpoint,
             "evaluator_summary": self.evaluator.summary(),
+            **({"official_timing": self.interaction.timing_summary()}
+               if hasattr(self.interaction, "timing_summary") else {}),
             "algorithm_action_history": list(self.algorithm_action_history),
             "exception_info": self.exception_info,
         }
@@ -756,7 +766,7 @@ class EpisodeRunner:
 
     @staticmethod
     def _pose_from_7d(values: list[float]) -> Any:
-        from api_render import CameraPose
+        from api_feasibility import CameraPose
 
         vals = [float(v) for v in values]
         if len(vals) != 7:

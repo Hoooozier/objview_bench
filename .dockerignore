@@ -1,0 +1,29 @@
+# Only source needed by the two trusted smoke Dockerfiles enters the build context.
+# Do not send datasets, caches, Git history, credentials or local job reports.
+**
+!benchmark/
+!benchmark/api_evaluation.py
+!benchmark/api_feasibility.py
+!benchmark/api_interaction.py
+!benchmark/runner_episode.py
+!benchmark/serve_submission_episode.py
+!benchmark/submission_protocol.py
+!benchmark/submission_gateway.py
+!benchmark/submission_interaction.py
+!benchmark/submission_client.py
+!benchmark/smoke_fixtures.py
+!benchmark/smoke_container_service.py
+!benchmark/requirements-submission.txt
+!benchmark/requirements-smoke.txt
+!benchmark/configs/
+!benchmark/configs/feasibility/
+!benchmark/configs/feasibility/whole.json
+!benchmark/containers/
+!benchmark/containers/Dockerfile.smoke
+!benchmark/examples/
+!benchmark/examples/submission/
+!benchmark/examples/submission/Dockerfile
+!benchmark/examples/submission/algorithm.py
+!benchmark/examples/submission/random_algorithm.py
+!benchmark/examples/submission/run.sh
+!benchmark/examples/submission/run-random.sh

@@ -1,0 +1,8 @@
+# Development compatibility snapshot tested on Python 3.10. Not a security-audited
+# deployment lockfile: scan and upgrade dependencies before accepting submissions.
+fastapi==0.115.12
+starlette==0.46.2
+pydantic==2.11.4
+uvicorn==0.34.2
+httpx==0.28.1
+anyio==4.9.0
